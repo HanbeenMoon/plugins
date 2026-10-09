@@ -27,6 +27,15 @@ Start with Google Drive for file discovery and file lifecycle tasks, then route 
 - Google Sheets creation, local spreadsheet import, range inspection, table cleanup, data restructuring, formula design or repair, chart creation or repair, or batch updates: use [google-sheets](../google-sheets/SKILL.md).
 - Google Slides deck summary, content edits, new deck creation, local presentation import, visual cleanup, structural repair, or template migration: use [google-slides](../google-slides/SKILL.md).
 
+## Large transfers and verification failures
+
+- Separate upload progress, server metadata verification, and full content verification. A local synced-folder copy or matching names and sizes does not prove that cloud bytes match the original. Keep source files until the requested verification has succeeded.
+- For a large manifest, use bounded batches with limited concurrency. Checkpoint confirmed file IDs, sizes, verification method, and pending failures so a retry reads existing files instead of uploading duplicates. Do not store credentials or temporary download URLs in checkpoints.
+- On a rate-limit response, inspect the returned reason and quota scope. Respect `Retry-After` when present; otherwise use bounded exponential backoff with jitter. A shared OAuth application's project quota can fail even for a single slow request: do not blame the user's upload size or promise that lowering concurrency will fix a project-wide limit.
+- An optional external client failing does not establish that the connected Drive tools are unavailable. Try an already-authorized connector or official Drive client for the same manifest and IDs. Preserve the account, scopes, and sharing state; never copy OAuth tokens or silently create a new OAuth application to evade limits.
+- Request stored-file checksums only when the tool exposes them. A `fields` selector is not proof that the normalized response includes `md5Checksum` or `sha256Checksum`. If it omits checksums, record metadata-only verification and use an authorized raw-file readback for full content verification.
+- If the supported materializer cannot retrieve a returned `file_uri`, record that exact readback failure. Do not treat a reference, HTTP error, or partial file as a verified download; do not expose bearer URLs or switch to inline base64 merely to bypass the failure.
+
 ## Routing Rules
 
 - If the request is ambiguous between Drive and a file-type surface, use the artifact itself as the tie-breaker:
