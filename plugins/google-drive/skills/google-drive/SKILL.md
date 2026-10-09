@@ -36,6 +36,8 @@ Start with Google Drive for file discovery and file lifecycle tasks, then route 
 - Request stored-file checksums only when the tool exposes them. A `fields` selector is not proof that the normalized response includes `md5Checksum` or `sha256Checksum`. If it omits checksums, record metadata-only verification and use an authorized raw-file readback for full content verification.
 - If the supported materializer cannot retrieve a returned `file_uri`, record that exact readback failure. Do not treat a reference, HTTP error, or partial file as a verified download; do not expose bearer URLs or switch to inline base64 merely to bypass the failure.
 
+- Treat HTTP 413 and documented per-file download caps as size limits, not rate limits. Slower requests do not bypass a hard cap. Check the actual connector response: one observed stored-file raw fetch rejected files above 268,435,456 bytes (256 MiB), despite the streaming path avoiding inline bytes. Use an existing authorized native download path for oversized files, checkpoint each verified result, and report files still pending. Do not treat this connector cap as a Google Drive storage or files.download API limit.
+
 ## Routing Rules
 
 - If the request is ambiguous between Drive and a file-type surface, use the artifact itself as the tie-breaker:
